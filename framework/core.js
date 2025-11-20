@@ -1,3 +1,4 @@
+
 // had l function kachd lia l VDOM mn 3and l user wkatkhdm hia b DOm bach trj3o real DOM
 function createRealElement(element) {
   if (element.tag == 'text') {
@@ -45,19 +46,23 @@ function createRealElement(element) {
   });
   return newElement
 }
-
-// let currentComponent = null;
+const hookStorage = new Map();
+let currentComponent = null;
 // currentComponent.hookIndex = 0
 // const hookStorage = new Map();
 
 function runComponent(componentFunction) {
-  currentComponent = componentFunction
+  // currentComponent = componentFunction
+
   if (!hookStorage.has(componentFunction)) {
     hookStorage.set(componentFunction, [])
+    hookStorage.get(componentFunction)[0] = 1
   }
-  componentFunction.stateIndex = 0
+
+  // componentFunction.stateIndex = 0
   const VDOM = componentFunction()
-  currentComponent = null;
+
+  // currentComponent = null;
   return VDOM
 }
 
@@ -67,11 +72,11 @@ function render(componentFunction, rootContainer) {
     unmount(oldDOM)
     rootContainer.removeChild(oldDOM)
   }
+  currentComponent = componentFunction
   const VDOM = runComponent(componentFunction);
   const newDom = createRealElement(VDOM)
   rootContainer.appendChild(newDom)
   rootContainer.__lastDom__ = newDom
-  currentComponent = newDom
 }
 
 function unmount(oldDOM) {
@@ -91,66 +96,27 @@ function unmount(oldDOM) {
     unmount(child)
   }
 }
-const hookStates = [] //hada howa l value dyal l component f had lmap : hookStorage
-// let hookIndex = 0;
-
-// function useState(initialValue) {
-//   if (!currentComponent) {
-//     throw new Error("useState must be called inside a component function.")
-//   }
-
-//   const componentState = stateStorage.get(currentComponent)
-//   const index = currentComponent.stateIndex
-
-//   if (index === componentState.length) {
-//     const stateObj = {
-//       value: initialValue,
-//       setValue: function (newValue) {
-//         stateObj.value = newValue
-//         //3ayt l re-render tani
-//         const rootContainer = document.getElementById('app-root')
-//         render(currentComponent, rootContainer)
-//       }
-//     }
-//     componentState.push(stateObj)
-//   }
-//   currentComponent.stateIndex++;
-//   return [componentState[index].value, componentState[index].setValue]
-// }
-let currentComponent = null;
-currentComponent.hookIndex = 0
-const hookStorage = new Map();
+// let currentComponent = null;
 function useState(initialValue) {
-  if (!currentComponent) {
-    throw new Error("useState must be called inside a component function.")
-  }
-  if (!hookStorage.get(currentComponent)) {
-    hookStorage.set(currentComponent, [])
-  }
-  const currentIndex = currentComponent.hookIndex;
-  // hookStates[currentIndex] = hookStates[currentIndex] || initialValue;
-  hookStorage.get(currentComponent)[currentIndex] = hookStorage.get(currentComponent)[currentIndex] || initialValue
-  if (currentIndex === hookStorage.get(currentComponent).length) {
-    const stateObj = {
-      value: initialValue,
-      setValue: function (newValue) {
-        const value = hookStorage.get(currentComponent)[currentIndex]
-        const arcals = c.get(inde)
-        if (value != newValue){
-          hookStorage.get(currentComponent)[inde]= newValue;
-          // stateObj.value = newValue;
-          const rootContainer = document.getElementById('app-root');
-          render(currentComponent, rootContainer);
-        }
-      }
-    };
+  const value = hookStorage.get(component);
+
+  const temp = hookStorage.get(currentComponent)
+  const currectIndex = temp[0]
+
+  //set that value f blasthaa
+  hookStorage.get(currentComponent)[currectIndex] = initialValue
+
+  //setValue
+  const setterFunc = (newValue) => {
+    hookStorage.get(currentComponent)[currectIndex] = newValue
+    
+    //Call re-render
+    // render()
   }
 
-  currentComponent.hookIndex++;
-  return [hookStorage[currentComponent][currentIndex], setState];
+  hookStorage.get(currentComponent)[0]++
+  return [hookStorage.get(currentComponent)[currectIndex], setterFunc]
 }
-
-c = map (1 : [calfun1, calfun2])
 
 function useEffect() {
   if (!currentComponent) {
@@ -161,31 +127,13 @@ function useEffect() {
   const index = currentComponent.effectIndex || 0; //had l index bach n3arfo achmn useEffect ra7na. kanbdaw mn 0
 }
 
-createRealElement({
-  "tag": "html",
-  "attrs": {
-    "type": "1",
-  },
-  "children": [
-    {
-      "tag": "div",
-      "attrs": {
-        "class": "2"
-      },
-      "children": [
-        {
-          "tag": "input",
-          "attrs": {
-            "type": "3",
-          }
-        },
-        {
-          "tag": "input",
-          "attrs": {
-            "type": "4",
-          }
-        }
-      ]
-    }
-  ]
-})
+function component() {
+  const [name, setName] = useState("Jane");
+  const [count, setCount] = useState(10);
+
+  console.log("count 1 ", count);
+  setCount(20)
+  console.log("name 2 ", name);
+}
+const root = document.getElementById('app-root')
+render(component, root)
