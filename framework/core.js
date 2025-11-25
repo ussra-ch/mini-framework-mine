@@ -1,4 +1,6 @@
-
+const hookStorage = new Map();
+let currentComponent = null;
+let __previousVDOM__ = null;
 // had l function kachd lia l VDOM mn 3and l user wkatkhdm hia b DOm bach trj3o real DOM
 function createRealElement(element) {
   if (element.tag == 'text') {
@@ -19,7 +21,7 @@ function createRealElement(element) {
           const event = attribute.slice(1)
           const func = element.attrs[attribute]
           if (typeof func === 'function') {
-            newElement.EventListener(event, func)
+            newElement.addEventListener(event, func)
             newElement.__listeners__.push({
               type: event,
               handler: func
@@ -27,6 +29,8 @@ function createRealElement(element) {
           } else {
             console.error(`Handler for event ${key} is not a function.`);
           }
+        } else if (attribute == 'className') {
+          newElement.setAttribute('class', element.attrs[attribute])
         } else {
           newElement.setAttribute(attribute, element.attrs[attribute])
         }
@@ -46,10 +50,6 @@ function createRealElement(element) {
   });
   return newElement
 }
-const hookStorage = new Map();
-let currentComponent = null;
-// currentComponent.hookIndex = 0
-// const hookStorage = new Map();
 
 function runComponent(componentFunction) {
   // currentComponent = componentFunction
@@ -68,15 +68,19 @@ function runComponent(componentFunction) {
 
 function render(componentFunction, rootContainer) {
   const oldDOM = rootContainer.__lastDom__
-  if (oldDOM) {
-    unmount(oldDOM)
-    rootContainer.removeChild(oldDOM)
-  }
   currentComponent = componentFunction
-  const VDOM = runComponent(componentFunction);
-  const newDom = createRealElement(VDOM)
-  rootContainer.appendChild(newDom)
-  rootContainer.__lastDom__ = newDom
+
+  const newVDOM = runComponent(componentFunction);
+  if (oldDOM) {
+    // unmount(oldDOM)
+    // rootContainer.removeChild(oldDOM)
+    updateDom(__previousVDOM__, newVDOM, oldDOM);
+  } else {
+    const newDom = createRealElement(newVDOM)
+    rootContainer.appendChild(newDom)
+    rootContainer.__lastDom__ = newDom
+  }
+  __previousVDOM__ = newVDOM;
 }
 
 function unmount(oldDOM) {
@@ -109,7 +113,7 @@ function useState(initialValue) {
   //setValue
   const setterFunc = (newValue) => {
     hookStorage.get(currentComponent)[currectIndex] = newValue
-    
+
     //Call re-render
     // render()
   }
@@ -118,14 +122,6 @@ function useState(initialValue) {
   return [hookStorage.get(currentComponent)[currectIndex], setterFunc]
 }
 
-function useEffect() {
-  if (!currentComponent) {
-    throw new Error("useEffect must be called inside a component function (during render).");
-  }
-  //kanjibo l useState variables kamlin dyal dak l component
-  const componentState = stateStorage.get(currentComponent);
-  const index = currentComponent.effectIndex || 0; //had l index bach n3arfo achmn useEffect ra7na. kanbdaw mn 0
-}
 
 function component() {
   const [name, setName] = useState("Jane");
@@ -137,3 +133,60 @@ function component() {
 }
 const root = document.getElementById('app-root')
 render(component, root)
+
+
+function updateDom(oldDOM, newDOM) {
+  if (newDOM.tag != oldDOM.tag){
+    createRealElement(newDOM)
+  }
+  updateAttributes(oldDOM, oldDOM.attrs, newDOM.attrs)
+  newDOM.forEach((oldDOM)=>{
+    updateDom(oldDOM, newDOM)
+  })
+}
+
+function updateAttributes(oldDOM, oldAttributes, newAttributes) {
+  oldAttributes = oldAttributes || {}
+  newAttributes = newAttributes || {}
+  //Loop1 : tl9a ri l elements li tmes7ou
+  for (const oldKey of Object.keys(oldAttributes)) {
+    if (!(oldKey in newAttributes)) {
+      if (oldKey.startsWith('$')) {
+        const eventType = oldKey.toLowerCase().substring(1);
+        oldDOM.removeEventListener(eventType, oldAttributes[oldKey]);
+      }else{
+        oldDOM.removeAttribute(oldKey)
+      }
+    }
+  }
+
+  //Loop2 : t handle l add w modify
+  for (const newKey in newAttributes) {
+    const oldValue = oldAttributes[newKey]
+    const newValue = newAttributes[newKey]
+
+    if (oldValue != newValue) {
+      if (newKey.startsWith("$")) {
+        const event = newKey.slice(1)
+        const func = newValue
+        if (typeof func === 'function') {
+          if (oldValue) {
+            oldDOM.removeEventListener(event, oldValue);
+          }
+          oldDOM.addEventListener(event, func)
+          oldDOM.__listeners__.push({
+            type: event,
+            handler: func
+          });
+        } else {
+          console.error(`Handler for event ${key} is not a function.`);
+        }
+      } else if (newKey == 'className') {
+        oldDOM.setAttribute('class', newValue)
+      } else {
+        oldDOM.setAttribute(newKey, newValue)
+      }
+    }
+
+  }
+}
