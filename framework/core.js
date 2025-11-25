@@ -27,7 +27,7 @@ function createRealElement(element) {
               handler: func
             });
           } else {
-            console.error(`Handler for event ${key} is not a function.`);
+            console.error(`Handler for event ${attribute} is not a function.`);
           }
         } else if (attribute == 'className') {
           newElement.setAttribute('class', element.attrs[attribute])
@@ -123,26 +123,42 @@ function useState(initialValue) {
 }
 
 
-function component() {
-  const [name, setName] = useState("Jane");
-  const [count, setCount] = useState(10);
-
-  console.log("count 1 ", count);
-  setCount(20)
-  console.log("name 2 ", name);
-}
-const root = document.getElementById('app-root')
-render(component, root)
-
-
-function updateDom(oldDOM, newDOM) {
-  if (newDOM.tag != oldDOM.tag){
-    createRealElement(newDOM)
+function updateDom(oldVDOM, newVDOM, realElement) {
+  if (newVDOM.tag != oldVDOM.tag) {
+    const newRealElement = createRealElement(newVDOM)
+    realElement.replaceWith(newRealElement);
+    return newRealElement
   }
-  updateAttributes(oldDOM, oldDOM.attrs, newDOM.attrs)
-  newDOM.forEach((oldDOM)=>{
-    updateDom(oldDOM, newDOM)
-  })
+  updateAttributes(realElement, oldVDOM.attrs, newVDOM.attrs)
+
+  const realChildren = Array.from(realElement.childNodes)
+  const maxLen = Math.max(oldChildren.length, newChildren.length)
+  const oldChildren = oldVDOM.children || [];
+  const newChildren = newVDOM.children || [];
+  for (let i = 0; i < maxLen; i++) {
+    const oldChild = oldChildren[i]
+    const newChild = newChildren[i]
+    const realChild = realChildren[i]
+
+    // CaseA: Both exist
+    if (newChild && oldChild) {
+      updateDom(oldChild, newChild, realChild)
+
+    }
+    // CaseB: New Child Added
+    else if (newChild && !oldChild) {
+      // Create the new element and append it to the current real element.
+      const newChildElement = createRealElement(newChild)
+      realElement.appendChild(newChildElement)
+
+    }
+    // CaseC: Old Child Removed (Unmount)
+    else if (!newChild && oldChild) {
+      // Remove the corresponding real DOM element.
+      realElement.removeChild(realChild)
+    }
+  }
+  return realElement
 }
 
 function updateAttributes(oldDOM, oldAttributes, newAttributes) {
@@ -152,9 +168,9 @@ function updateAttributes(oldDOM, oldAttributes, newAttributes) {
   for (const oldKey of Object.keys(oldAttributes)) {
     if (!(oldKey in newAttributes)) {
       if (oldKey.startsWith('$')) {
-        const eventType = oldKey.toLowerCase().substring(1);
+        const eventType = oldKey.toLowerCase().substring(1)
         oldDOM.removeEventListener(eventType, oldAttributes[oldKey]);
-      }else{
+      } else {
         oldDOM.removeAttribute(oldKey)
       }
     }
@@ -190,3 +206,196 @@ function updateAttributes(oldDOM, oldAttributes, newAttributes) {
 
   }
 }
+
+function component() {
+  return ({
+  "tag": "div",
+  "attrs": {
+    "className": "todoapp"
+  },
+  "children": [
+    {
+      "tag": "header",
+      "attrs": {
+        "className": "header"
+      },
+      "children": [
+        {
+          "tag": "h1",
+          "attrs": {},
+          "children": ["todos"]
+        },
+        {
+          "tag": "input",
+          "attrs": {
+            "className": "new-todo",
+            "placeholder": "What needs to be done?",
+            "autofocus": true,
+            "$onkeyup": "handleNewTodoEntry"
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "tag": "section",
+      "attrs": {
+        "className": "main"
+      },
+      "children": [
+        {
+          "tag": "input",
+          "attrs": {
+            "id": "toggle-all",
+            "className": "toggle-all",
+            "type": "checkbox",
+            "checked": false,
+            "$onclick": "handleToggleAll"
+          },
+          "children": []
+        },
+        {
+          "tag": "label",
+          "attrs": {
+            "htmlFor": "toggle-all"
+          },
+          "children": ["Mark all as complete"]
+        },
+        {
+          "tag": "ul",
+          "attrs": {
+            "className": "todo-list"
+          },
+          "children": [
+            {
+              "tag": "li",
+              "attrs": {
+                "className": "todo active"
+              },
+              "children": [
+                {
+                  "tag": "div",
+                  "attrs": {
+                    "className": "view"
+                  },
+                  "children": [
+                    {
+                      "tag": "input",
+                      "attrs": {
+                        "className": "toggle",
+                        "type": "checkbox",
+                        "checked": false,
+                        "$onclick": "handleToggle(1)"
+                      },
+                      "children": []
+                    },
+                    {
+                      "tag": "label",
+                      "attrs": {
+                        "$ondblclick": "handleEdit(1)"
+                      },
+                      "children": ["Walk the dog"]
+                    },
+                    {
+                      "tag": "button",
+                      "attrs": {
+                        "className": "destroy",
+                        "$onclick": "handleDestroy(1)"
+                      },
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+            // ... more <li> items would go here ...
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "footer",
+      "attrs": {
+        "className": "footer"
+      },
+      "children": [
+        {
+          "tag": "span",
+          "attrs": {
+            "className": "todo-count"
+          },
+          "children": [
+            {
+              "tag": "strong",
+              "attrs": {},
+              "children": ["1"] // Dynamic count
+            },
+            " item left"
+          ]
+        },
+        {
+          "tag": "ul",
+          "attrs": {
+            "className": "filters"
+          },
+          "children": [
+            {
+              "tag": "li",
+              "attrs": {},
+              "children": [
+                {
+                  "tag": "a",
+                  "attrs": {
+                    "className": "selected",
+                    "href": "#/",
+                    "$onclick": "setFilter('all')"
+                  },
+                  "children": ["All"]
+                }
+              ]
+            },
+            {
+              "tag": "li",
+              "attrs": {},
+              "children": [
+                {
+                  "tag": "a",
+                  "attrs": {
+                    "href": "#/active",
+                    "$onclick": "setFilter('active')"
+                  },
+                  "children": ["Active"]
+                }
+              ]
+            },
+            {
+              "tag": "li",
+              "attrs": {},
+              "children": [
+                {
+                  "tag": "a",
+                  "attrs": {
+                    "href": "#/completed",
+                    "$onclick": "setFilter('completed')"
+                  },
+                  "children": ["Completed"]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "button",
+          "attrs": {
+            "className": "clear-completed",
+            "$onclick": "handleClearCompleted"
+          },
+          "children": ["Clear completed"]
+        }
+      ]
+    }
+  ]
+})
+}
+const root = document.getElementById('app-root')
+render(component, root)
